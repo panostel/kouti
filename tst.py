@@ -42,7 +42,9 @@ try:
 					proc = subprocess.Popen("mpg321 /home/pte/pi-rfid/02.mp3", stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
 				case _:
 					proc = subprocess.Popen("mpg321 /home/pte/pi-rfid/king-of-apes-16.mp3", stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
-							
+			with open('/tmp/audio_pgid', 'w') as f:
+				f.write(str(os.getpgid(proc.pid)))
+						
 		if error and count_error == 2:
 			try:
 				proc
@@ -50,6 +52,10 @@ try:
 				print("proc not defined")
 			else:		
 				os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+				try:
+					os.remove('/tmp/audio_pgid')
+				except FileNotFoundError:
+					pass
 				print("stopping")
 				UID_Temp = "empty"  
 			count_error = 0;
