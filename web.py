@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template
 import json
 import os
 import glob
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -91,6 +92,19 @@ def register_cancel():
 def list_files():
     files = sorted(glob.glob(os.path.join(AUDIO_DIR, '*.mp3')))
     return jsonify(files)
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'no file'}), 400
+    f = request.files['file']
+    if not f.filename.lower().endswith('.mp3'):
+        return jsonify({'error': 'only .mp3 files allowed'}), 400
+    filename = secure_filename(f.filename)
+    dest = os.path.join(AUDIO_DIR, filename)
+    f.save(dest)
+    return jsonify({'ok': True, 'path': dest})
 
 
 if __name__ == '__main__':
