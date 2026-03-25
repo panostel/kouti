@@ -15,12 +15,21 @@ import subprocess
 
 PULSE_SERVER = "unix:/run/user/1000/pulse/native"
 STATE_FILE = '/tmp/soundbox_state'
+VOLUME_FILE = '/tmp/soundbox_volume'
 
 
 def set_state(state):
     try:
         with open(STATE_FILE, 'w') as f:
             f.write(state)
+    except Exception:
+        pass
+
+
+def write_volume_feedback(vol):
+    try:
+        with open(VOLUME_FILE, 'w') as f:
+            f.write(str(int(vol)))
     except Exception:
         pass
 
@@ -121,6 +130,7 @@ try:
                 if clkState == 1:
                     print("Volume: " + str(int(volume)))
                     set_volume(volume)
+                    write_volume_feedback(volume)
             clkLastState = clkState
         btnLastState = btnPushed
 finally:

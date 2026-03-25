@@ -20,9 +20,11 @@ BREATH_DURATION = 4.0
 FADE_STEPS = 100
 READY_FLAG_FILE = '/tmp/soundbox_ready'
 STATE_FILE = '/tmp/soundbox_state'
+VOLUME_FILE = '/tmp/soundbox_volume'
 
 BLINK_ON = 0.8
 BLINK_OFF = 0.8
+VOLUME_DISPLAY_DURATION = 1.5  # seconds to show volume feedback after last change
 
 
 def read_state():
@@ -31,6 +33,18 @@ def read_state():
             return f.read().strip()
     except FileNotFoundError:
         return 'idle'
+
+
+def read_volume_feedback():
+    """Return current volume (0-100) if changed within VOLUME_DISPLAY_DURATION, else None."""
+    try:
+        age = time.time() - os.path.getmtime(VOLUME_FILE)
+        if age < VOLUME_DISPLAY_DURATION:
+            with open(VOLUME_FILE, 'r') as f:
+                return int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        pass
+    return None
 
 
 def signal_handler(sig, frame):
@@ -54,6 +68,14 @@ def run(pwm):
 
     while True:
         state = read_state()
+
+        # Volume feedback takes priority over state patterns
+        vol = read_volume_feedback()
+        if vol is not None:
+            pwm.ChangeDutyCycle(vol)
+            time.sleep(0.05)
+            last_state = None  # force state re-entry after feedback ends
+            continue
 
         if state != last_state:
             print(f"LED state: {state}")
