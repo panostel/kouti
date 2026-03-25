@@ -1,0 +1,15 @@
+[Unit]
+Description=NFC Soundbox Player
+After=network.target
+
+[Service]
+Environment=PYTHONUNBUFFERED=1
+Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native
+ExecStart=/home/pte/pi-rfid/bin/python /home/pte/kouti/soundbox.py
+WorkingDirectory=/home/pte/kouti
+Restart=always
+User=pte
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target

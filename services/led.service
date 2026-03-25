@@ -1,0 +1,13 @@
+[Unit]
+Description=LED Breathing (ready indicator)
+After=soundbox.service
+
+[Service]
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pte/pi-rfid/bin/python /home/pte/kouti/led.py
+WorkingDirectory=/home/pte/kouti
+Restart=always
+User=pte
+
+[Install]
+WantedBy=multi-user.target

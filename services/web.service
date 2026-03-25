@@ -1,0 +1,12 @@
+[Unit]
+Description=Soundbox Web Interface
+After=network.target
+
+[Service]
+ExecStart=/home/pte/pi-rfid/bin/python /home/pte/kouti/web.py
+WorkingDirectory=/home/pte/kouti
+Restart=always
+User=pte
+
+[Install]
+WantedBy=multi-user.target

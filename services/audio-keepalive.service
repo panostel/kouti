@@ -1,0 +1,11 @@
+[Unit]
+Description=Audio Keepalive (prevents ALSA from sleeping)
+After=sound.target
+
+[Service]
+ExecStart=aplay -D default -c 2 -f S16 -r 48000 /dev/zero
+Restart=always
+User=pte
+
+[Install]
+WantedBy=multi-user.target

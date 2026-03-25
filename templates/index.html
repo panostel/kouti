@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soundbox</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #111; color: #eee; padding: 2rem; }
+    h1 { margin-bottom: 1.5rem; font-size: 1.4rem; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+    th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #333; }
+    th { color: #888; font-size: 0.85rem; }
+    td:last-child { text-align: right; }
+    button { background: #222; color: #eee; border: 1px solid #444; padding: 0.4rem 0.8rem;
+             cursor: pointer; font-family: monospace; }
+    button:hover { background: #333; }
+    button.danger { color: #f66; border-color: #633; }
+    button.danger:hover { background: #311; }
+    #register-section { border: 1px solid #333; padding: 1.5rem; max-width: 480px; }
+    #register-section h2 { font-size: 1rem; margin-bottom: 1rem; }
+    #status { margin: 1rem 0; min-height: 1.5rem; color: #aaa; font-size: 0.9rem; }
+    select { background: #222; color: #eee; border: 1px solid #444; padding: 0.4rem;
+             font-family: monospace; width: 100%; margin-bottom: 0.75rem; }
+    #uid-display { font-size: 0.85rem; color: #8cf; margin-bottom: 0.75rem; }
+    .row { display: flex; gap: 0.5rem; }
+    .empty { color: #555; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Soundbox Tag Manager</h1>
+
+  <table id="tags-table">
+    <thead>
+      <tr><th>UID</th><th>File</th><th></th></tr>
+    </thead>
+    <tbody id="tags-body">
+      <tr><td colspan="3" class="empty">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <div id="register-section">
+    <h2>Register New Tag</h2>
+    <div id="status">Press "Scan tag" then tap an NFC tag.</div>
+    <div id="uid-display"></div>
+
+    <div id="scan-controls">
+      <button id="btn-scan" onclick="startScan()">Scan tag</button>
+    </div>
+
+    <div id="assign-controls" style="display:none">
+      <select id="file-select"><option>Loading files...</option></select>
+      <div class="row">
+        <button onclick="saveMapping()">Save</button>
+        <button onclick="cancelScan()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pollInterval = null;
+    let scannedUid = null;
+
+    async function loadTags() {
+      const res = await fetch('/api/tags');
+      const data = await res.json();
+      const tbody = document.getElementById('tags-body');
+      const entries = Object.entries(data.tags);
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No tags registered yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(([uid, file]) => `
+        <tr>
+          <td>${uid}</td>
+          <td>${file.split('/').pop()}</td>
+          <td><button class="danger" onclick="deleteTag(${JSON.stringify(uid)})">delete</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteTag(uid) {
+      await fetch('/api/tags/' + encodeURIComponent(uid), { method: 'DELETE' });
+      loadTags();
+    }
+
+    async function startScan() {
+      scannedUid = null;
+      document.getElementById('uid-display').textContent = '';
+      document.getElementById('assign-controls').style.display = 'none';
+      document.getElementById('scan-controls').style.display = 'block';
+      document.getElementById('status').textContent = 'Scanning... tap an NFC tag now.';
+
+      await fetch('/api/register/start', { method: 'POST' });
+
+      pollInterval = setInterval(async () => {
+        const res = await fetch('/api/register/poll');
+        const data = await res.json();
+        if (data.uid) {
+          clearInterval(pollInterval);
+          scannedUid = data.uid;
+          document.getElementById('uid-display').textContent = 'UID: ' + data.uid;
+          document.getElementById('status').textContent = 'Tag detected. Choose a sound file:';
+          document.getElementById('scan-controls').style.display = 'none';
+          await loadFiles();
+          document.getElementById('assign-controls').style.display = 'block';
+        }
+      }, 500);
+    }
+
+    async function loadFiles() {
+      const res = await fetch('/api/files');
+      const files = await res.json();
+      const sel = document.getElementById('file-select');
+      sel.innerHTML = files.map(f => `<option value="${f}">${f.split('/').pop()}</option>`).join('');
+    }
+
+    async function saveMapping() {
+      const file = document.getElementById('file-select').value;
+      await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: scannedUid, file })
+      });
+      await fetch('/api/register/cancel', { method: 'POST' });
+      document.getElementById('assign-controls').style.display = 'none';
+      document.getElementById('scan-controls').style.display = 'block';
+      document.getElementById('status').textContent = 'Saved! Press "Scan tag" to register another.';
+      document.getElementById('uid-display').textContent = '';
+      scannedUid = null;
+      loadTags();
+    }
+
+    async function cancelScan() {
+      clearInterval(pollInterval);
+      await fetch('/api/register/cancel', { method: 'POST' });
+      document.getElementById('assign-controls').style.display = 'none';
+      document.getElementById('scan-controls').style.display = 'block';
+      document.getElementById('status').textContent = 'Cancelled.';
+      document.getElementById('uid-display').textContent = '';
+      scannedUid = null;
+    }
+
+    loadTags();
+  </script>
+</body>
+</html>
