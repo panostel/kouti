@@ -9,6 +9,12 @@ AUDIO_PGID_FILE = '/tmp/audio_pgid'
 REGISTER_MODE_FILE = '/tmp/register_mode'
 PENDING_UID_FILE = '/tmp/pending_uid'
 READY_FLAG_FILE = '/tmp/soundbox_ready'
+STATE_FILE = '/tmp/soundbox_state'
+
+
+def set_state(state):
+    with open(STATE_FILE, 'w') as f:
+        f.write(state)
 
 
 def load_tags():
@@ -23,6 +29,7 @@ rdr = RFID()
 
 # Signal ready — LED breathing will start once this flag exists
 open(READY_FLAG_FILE, 'w').close()
+set_state('idle')
 
 UID_Temp = "empty"
 UID_Temp_flag = "on"
@@ -69,6 +76,7 @@ try:
                 )
                 with open(AUDIO_PGID_FILE, 'w') as f:
                     f.write(str(os.getpgid(proc.pid)))
+                set_state('playing')
 
         if error and count_error == 2:
             if proc is not None:
@@ -81,6 +89,7 @@ try:
                 except FileNotFoundError:
                     pass
                 proc = None
+                set_state('idle')
                 print("stopping")
             UID_Temp = "empty"
             count_error = 0

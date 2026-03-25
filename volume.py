@@ -14,6 +14,15 @@ import signal
 import subprocess
 
 PULSE_SERVER = "unix:/run/user/1000/pulse/native"
+STATE_FILE = '/tmp/soundbox_state'
+
+
+def set_state(state):
+    try:
+        with open(STATE_FILE, 'w') as f:
+            f.write(state)
+    except Exception:
+        pass
 
 # Wait for PipeWire to be ready
 print("Waiting for audio system to initialize...")
@@ -87,10 +96,12 @@ try:
                 if is_paused:
                     os.killpg(pgid, signal.SIGCONT)
                     is_paused = False
+                    set_state('playing')
                     print("Resumed")
                 else:
                     os.killpg(pgid, signal.SIGSTOP)
                     is_paused = True
+                    set_state('paused')
                     print("Paused")
             except (FileNotFoundError, ValueError, ProcessLookupError):
                 print("No audio playing")
